@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mansi 💖</title>
+  <style>
+    :root{
+      --bg1:#fff0f6; --bg2:#ffe8f0;
+      --card:#ffffffcc; --text:#2b2b2b;
+      --yes:#22c55e; --no:#ef4444;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      background:radial-gradient(circle at top,var(--bg1),var(--bg2));
+      color:var(--text);
+      overflow:hidden;
+    }
+    .card{
+      width:min(92vw,520px);
+      padding:28px 22px;
+      background:var(--card);
+      backdrop-filter:blur(8px);
+      border-radius:20px;
+      box-shadow:0 10px 40px rgba(0,0,0,.12);
+      text-align:center;
+      position:relative;
+      z-index:1;
+    }
+    h1{ margin:0 0 8px; font-size:28px; }
+    p{ margin:0 0 18px; line-height:1.35; }
+
+    .btn-row{
+      display:flex;
+      gap:12px;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    button{
+      border:0;
+      padding:12px 18px;
+      border-radius:14px;
+      font-weight:700;
+      font-size:16px;
+      cursor:pointer;
+      transition:transform 120ms ease;
+      box-shadow:0 8px 18px rgba(0,0,0,.12);
+      user-select:none;
+      touch-action:manipulation;
+    }
+    button:active{ transform:scale(.98); }
+    #yesBtn{ background:var(--yes); color:#fff; }
+
+    /* No button is OUTSIDE the card and fixed to viewport */
+    #noBtn{
+      background:var(--no);
+      color:#fff;
+      position:fixed;
+      left:0; top:0;
+      z-index:999999;
+      visibility:hidden; /* show only after we place it */
+    }
+
+    .hint{
+      font-size:14px;
+      font-weight:600;
+      opacity:.85;
+      margin-top:12px;
+    }
+
+    .final{
+      display:none;
+      margin-top:16px;
+      animation:pop 350ms ease both;
+    }
+    @keyframes pop{
+      from{ transform:scale(.95); opacity:0; }
+      to{ transform:scale(1); opacity:1; }
+    }
+    .final img{
+      width:min(86vw,420px);
+      border-radius:16px;
+      margin-top:14px;
+      box-shadow:0 10px 26px rgba(0,0,0,.18);
+    }
+    .tiny{ margin-top:14px; font-size:12px; opacity:.7; }
+  </style>
+</head>
+
+<body>
+  <div class="card" id="card">
+    <h1 id="title">Mansi 💖</h1>
+    <p id="question">Will you be my Valentine?</p>
+
+    <div class="btn-row">
+      <button id="yesBtn">Yes 😍</button>
+    </div>
+
+    <div class="hint" id="hint">Don’t you dare click no! 😤</div>
+
+    <div class="final" id="final">
+      <h1 id="finalTitle">Good choice 😌💘</h1>
+      <p id="finalMsg">You + Me + Valentine = Perfect plan. 💞</p>
+      <img id="finalImg" alt="valentine meme" src="meme.jpg" />
+      <div class="tiny">P.S. You can’t say no. It’s coded. 😄</div>
+    </div>
+  </div>
+
+  <!-- No button is outside the card -->
+  <button id="noBtn" aria-label="No">No 😅</button>
+
+  <script>
+    // ===== Customize text =====
+    const NAME = "Mansi";
+    const QUESTION = "Will you be my Valentine?";
+    const FINAL_TITLE = "Good choice 😌💘";
+    const FINAL_MESSAGE = "You + Me + Valentine = Perfect plan. 💞";
+
+    document.getElementById("title").textContent = `${NAME} 💖`;
+    document.getElementById("question").textContent = QUESTION;
+    document.getElementById("finalTitle").textContent = FINAL_TITLE;
+    document.getElementById("finalMsg").textContent = FINAL_MESSAGE;
+
+    const noBtn = document.getElementById("noBtn");
+    const yesBtn = document.getElementById("yesBtn");
+    const final = document.getElementById("final");
+    const hint = document.getElementById("hint");
+
+    const PAD = 12;
+    const RUN_RADIUS = 130; // 100 easier, 160 harder
+    let noMoves = 0;
+    let lastMoveAt = 0;
+
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    function maxX() {
+      return Math.max(PAD, window.innerWidth - noBtn.offsetWidth - PAD);
+    }
+    function maxY() {
+      return Math.max(PAD, window.innerHeight - noBtn.offsetHeight - PAD);
+    }
+
+    function setNo(x, y) {
+      const x2 = clamp(x, PAD, maxX());
+      const y2 = clamp(y, PAD, maxY());
+      noBtn.style.left = `${x2}px`;
+      noBtn.style.top  = `${y2}px`;
+      noBtn.style.visibility = "visible";
+    }
+
+    function placeNoNearYes() {
+      const r = yesBtn.getBoundingClientRect();
+
+      // If sizes not ready yet, try again next frame
+      if (!noBtn.offsetWidth || !noBtn.offsetHeight) {
+        requestAnimationFrame(placeNoNearYes);
+        return;
+      }
+
+      setNo(r.right + 12, r.top);
+    }
+
+    function moveNoFarFrom(px, py) {
+      noMoves++;
+
+      // pick farthest among candidates so it REALLY runs away
+      let best = { x: PAD, y: PAD, d: -1 };
+      for (let i = 0; i < 16; i++) {
+        const x = PAD + Math.random() * (maxX() - PAD);
+        const y = PAD + Math.random() * (maxY() - PAD);
+        const dx = x - px, dy = y - py;
+        const d = dx*dx + dy*dy;
+        if (d > best.d) best = { x, y, d };
+      }
+
+      setNo(best.x, best.y);
+
+      // Yes grows slightly each time
+      yesBtn.style.transform = `scale(${Math.min(1 + noMoves * 0.05, 1.6)})`;
+
+      if (noMoves === 4) hint.textContent = "Nice try 😌";
+      if (noMoves === 7) hint.textContent = "Okay okay… just click Yes 💗";
+    }
+
+    function onPointerMove(e) {
+      const now = Date.now();
+      if (now - lastMoveAt < 70) return;
+      lastMoveAt = now;
+
+      const r = noBtn.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+
+      if (dist < RUN_RADIUS) moveNoFarFrom(e.clientX, e.clientY);
+    }
+
+    noBtn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      moveNoFarFrom(e.clientX, e.clientY);
+    });
+
+    yesBtn.addEventListener("click", () => {
+      document.getElementById("title").style.display = "none";
+      document.getElementById("question").style.display = "none";
+      yesBtn.style.display = "none";
+      noBtn.style.display = "none";
+      hint.style.display = "none";
+
+      window.removeEventListener("pointermove", onPointerMove);
+
+      final.style.display = "block";
+
+      for (let i = 0; i < 18; i++) {
+        const s = document.createElement("div");
+        s.textContent = "💗";
+        s.style.position = "fixed";
+        s.style.left = Math.random() * 100 + "vw";
+        s.style.top = "-10px";
+        s.style.fontSize = (14 + Math.random() * 22) + "px";
+        s.style.transition = "transform 1.2s linear, top 1.2s linear, opacity 1.2s linear";
+        document.body.appendChild(s);
+
+        requestAnimationFrame(() => {
+          s.style.top = (80 + Math.random() * 25) + "vh";
+          s.style.transform = `translateY(0) rotate(${Math.random() * 180}deg)`;
+          s.style.opacity = "0";
+        });
+
+        setTimeout(() => s.remove(), 1400);
+      }
+    });
+
+    // place ASAP + after layout settles
+    document.addEventListener("DOMContentLoaded", () => {
+      placeNoNearYes();
+      window.addEventListener("pointermove", onPointerMove);
+      setTimeout(placeNoNearYes, 80);
+      setTimeout(placeNoNearYes, 200);
+    });
+
+    window.addEventListener("resize", placeNoNearYes);
+  </script>
+</body>
+</html>
